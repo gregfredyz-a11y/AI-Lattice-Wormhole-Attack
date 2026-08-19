@@ -22,23 +22,28 @@ def isogeny_map_raw(P, a1, b1, a2, b2):
     return x_new, y_new
 
 def ai_predict_curve(P):
-    """AI-based method to predict best curve parameters."""
+    """AI-based method to predict best curve parameters using a safe float loss."""
     
     def loss(params):
         a1, b1, a2, b2 = params
         try:
-            # Get raw coordinates to prevent validation crashes
             x_new, y_new = isogeny_map_raw(P, a1, b1, a2, b2)
             
-            # Calculate distance from the target public key coordinates
-            distance = np.sqrt((x_new - P.x)**2 + (y_new - P.y)**2)
-            return float(distance)
+            # Use absolute difference and scale down to fit safely inside standard floats
+            diff_x = abs(x_new - P.x)
+            diff_y = abs(y_new - P.y)
+            
+            # Map the massive integer gaps into a safe float space using bit lengths
+            # This gives Nelder-Mead a smooth gradient without overflowing to infinity
+            loss_val = float(diff_x.bit_length() + diff_y.bit_length())
+            return loss_val
+            
         except Exception:
-            return float('inf') 
+            return 1e300  # Use a large finite number instead of float('inf') to prevent NaN math
 
     # Initialize parameters as floats for the continuous optimizer
     initial_params = [float(random.randint(1, p-1)) for _ in range(4)]
-    result = minimize(loss, initial_params, method="Nelder-Mead", options={'maxiter': 100})
+    result = minimize(loss, initial_params, method="Nelder-Mead", options={'maxiter': 50})
     return result.x
 
 def wormhole_attack(public_key):
@@ -47,7 +52,6 @@ def wormhole_attack(public_key):
         params = ai_predict_curve(public_key)
         a1, b1, a2, b2 = map(lambda v: int(round(v)), params)
         
-        # Check raw coordinates first
         x_new, y_new = isogeny_map_raw(public_key, a1, b1, a2, b2)
 
         if x_new == public_key.x and y_new == public_key.y:
