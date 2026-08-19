@@ -23,9 +23,12 @@ def isogeny_map(P, a1, b1, a2, b2):
 def ai_predict_curve(P):
     """AI-based method to predict best curve parameters."""
     def loss(params):
-        a1, b1, a2, b2 = params
-        mapped_P = isogeny_map(P, a1, b1, a2, b2)
-        return abs(mapped_P.x - P.x) + abs(mapped_P.y - P.y)
+    # SciPy passes params as a numpy array of floats
+    a1, b1, a2, b2 = map(int, np.round(params)) 
+    
+    # Alternatively, if you need to cast them inside isogeny_map:
+    mapped_P = isogeny_map(P, a1, b1, a2, b2)
+    ...
 
     initial_params = [random.randint(1, p-1) for _ in range(4)]
     result = minimize(loss, initial_params, method="Nelder-Mead")
