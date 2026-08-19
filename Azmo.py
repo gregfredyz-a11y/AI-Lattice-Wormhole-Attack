@@ -9,17 +9,17 @@ from scipy.optimize import minimize
 p = secp256k1.p
 G = secp256k1.G
 
-def isogeny_map(P, a1, b1, a2, b2):
-    """Map a point P from one curve to another."""
+def isogeny_map_raw(P, a1, b1, a2, b2):
+    """Calculate raw mapped coordinates without triggering fastecdsa curve validation."""
     x, y = P.x, P.y
     
-    # Use native round() instead of np.round() to support huge Python ints
+    # Safely convert inputs to integers
     a1_i, b1_i, a2_i, b2_i = map(lambda v: int(round(float(v) if isinstance(v, (float, np.floating)) else v)), [a1, b1, a2, b2])
     
     x_new = (x**3 + a1_i*x + b1_i) % p
     y_new = (y**3 + a2_i*y + b2_i) % p
     
-    return Point(x_new, y_new, secp256k1)
+    return x_new, y_new
 
 def ai_predict_curve(P):
     """AI-based method to predict best curve parameters."""
@@ -27,9 +27,11 @@ def ai_predict_curve(P):
     def loss(params):
         a1, b1, a2, b2 = params
         try:
-            mapped_P = isogeny_map(P, a1, b1, a2, b2)
-            # Calculate distance from the target point
-            distance = np.sqrt((mapped_P.x - P.x)**2 + (mapped_P.y - P.y)**2)
+            # Get raw coordinates to prevent validation crashes
+            x_new, y_new = isogeny_map_raw(P, a1, b1, a2, b2)
+            
+            # Calculate distance from the target public key coordinates
+            distance = np.sqrt((x_new - P.x)**2 + (y_new - P.y)**2)
             return float(distance)
         except Exception:
             return float('inf') 
@@ -43,12 +45,12 @@ def wormhole_attack(public_key):
     """Perform AI-Optimized Wormhole Attack."""
     for i in range(5000):  
         params = ai_predict_curve(public_key)
-        # Use native round() here as well
         a1, b1, a2, b2 = map(lambda v: int(round(v)), params)
         
-        mapped_P = isogeny_map(public_key, a1, b1, a2, b2)
+        # Check raw coordinates first
+        x_new, y_new = isogeny_map_raw(public_key, a1, b1, a2, b2)
 
-        if mapped_P.x == public_key.x and mapped_P.y == public_key.y:
+        if x_new == public_key.x and y_new == public_key.y:
             print("[✔] Wormhole Found! Possible Private Key Leakage.")
             return (a1, b1, a2, b2)
     
