@@ -23,9 +23,13 @@ def isogeny_map(P, a1, b1, a2, b2):
 def ai_predict_curve(P):
     """AI-based method to predict best curve parameters."""
     def loss(params):
-    # SciPy passes params as a numpy array of floats
+    # This line must be indented with 4 spaces
     a1, b1, a2, b2 = map(int, np.round(params)) 
     
+    # Ensure the rest of the code in this function is also indented
+    mapped_P = isogeny_map(P, a1, b1, a2, b2)
+    # ... rest of your code ...
+
     # Alternatively, if you need to cast them inside isogeny_map:
     mapped_P = isogeny_map(P, a1, b1, a2, b2)
     ...
