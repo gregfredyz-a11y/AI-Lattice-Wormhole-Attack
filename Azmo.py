@@ -13,8 +13,8 @@ def isogeny_map(P, a1, b1, a2, b2):
     """Map a point P from one curve to another."""
     x, y = P.x, P.y
     
-    # SciPy passes floats, so we round and cast to int to prevent fastecdsa crashes
-    a1_i, b1_i, a2_i, b2_i = map(lambda v: int(np.round(v)), [a1, b1, a2, b2])
+    # Use native round() instead of np.round() to support huge Python ints
+    a1_i, b1_i, a2_i, b2_i = map(lambda v: int(round(float(v) if isinstance(v, (float, np.floating)) else v)), [a1, b1, a2, b2])
     
     x_new = (x**3 + a1_i*x + b1_i) % p
     y_new = (y**3 + a2_i*y + b2_i) % p
@@ -28,11 +28,11 @@ def ai_predict_curve(P):
         a1, b1, a2, b2 = params
         try:
             mapped_P = isogeny_map(P, a1, b1, a2, b2)
-            # Calculate distance from the target point (simple Euclidean distance for optimization)
+            # Calculate distance from the target point
             distance = np.sqrt((mapped_P.x - P.x)**2 + (mapped_P.y - P.y)**2)
             return float(distance)
         except Exception:
-            return float('inf') # Return a high penalty if point initialization fails
+            return float('inf') 
 
     # Initialize parameters as floats for the continuous optimizer
     initial_params = [float(random.randint(1, p-1)) for _ in range(4)]
@@ -43,7 +43,8 @@ def wormhole_attack(public_key):
     """Perform AI-Optimized Wormhole Attack."""
     for i in range(5000):  
         params = ai_predict_curve(public_key)
-        a1, b1, a2, b2 = map(lambda v: int(np.round(v)), params)
+        # Use native round() here as well
+        a1, b1, a2, b2 = map(lambda v: int(round(v)), params)
         
         mapped_P = isogeny_map(public_key, a1, b1, a2, b2)
 
